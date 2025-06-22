@@ -14,7 +14,6 @@ This repo now includes:
 2. [Prerequisites](#prerequisites)
 3. [Installation](#installation)
 4. [Usage](#usage)
-
    * [Start Backend](#start-backend)
    * [Start Frontend](#start-frontend)
    * [Running Together](#running-together)
@@ -26,25 +25,21 @@ This repo now includes:
 ## Features
 
 * 🔄 **ComfyUI Workflow**
-
   * Loads a Stable Diffusion checkpoint + optional LoRA adapter
   * Runs in‑process without requiring a separate ComfyUI HTTP server
   * Single‑image output as PNG bytes
 
-* 🚀 **REST API** (`backend/api_server.py`)
-
+* 🚀 **REST API** (`api_server.py`)
   * `POST /generate` accepts prompt, negative\_prompt, LoRA name, seed
   * Returns Base64‑encoded PNG, metadata (size, seed, saved\_path)
   * CORS enabled for `http://localhost:3000` and `http://localhost:5173`
 
 * 💻 **Frontend** (`frontend/`)
-
   * Prompt form: text, negative prompt, LoRA selector, sliders for steps & CFG, seed input
   * Generate button with loading spinner
   * Result gallery: display image, Download / Regenerate / Save Favorite buttons
   * **History** & **Favorites** stored in browser `localStorage`
   * **Settings** panel: API URL, API key, default parameters (persisted)
-
 
 ---
 
@@ -69,21 +64,28 @@ cd comfyui-as-a-service
 ### 2. Setup Backend
 
 ```bash
-cd backend
 python3 -m venv .venv
 # Windows: .\.venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Put your `.flow` file at `backend/flows/text2img_lora.flow` and any LoRA adapters under `backend/models/loras/` if needed.
+Put your `.flow` file at `flows/text2img_lora.flow` and any LoRA adapters under `lib/` if needed.
 
-### 3. Setup Frontend
+### 3. Start ComfyUI Server
+
+First, start the ComfyUI server (required for backend functionality):
+
+```bash
+python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header "*"
+```
+
+Keep this terminal running throughout your session.
+
+### 4. Setup Frontend
 
 ```bash
 cd frontend
-# If you haven’t yet scaffolded:
-# npm create vite@latest . -- --template react-ts-swc
 npm install
 ```
 
@@ -94,16 +96,33 @@ VITE_API_URL=http://localhost:8000
 VITE_DEFAULT_STEPS=20
 VITE_DEFAULT_CFG=7.5
 ```
+
 ---
 
 ## Usage
 
 ### Start Backend
 
+**In a new terminal:**
+
+1. Activate the virtual environment:
 ```bash
-cd backend
-# ensure virtualenv is active
-uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
+# Windows: .\.venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+```
+
+2. Set the Python path (Windows PowerShell):
+```powershell
+$env:PYTHONPATH = "$PWD\lib\ComfyUI"
+```
+
+For macOS/Linux (bash/zsh):
+```bash
+export PYTHONPATH="$PWD/lib/ComfyUI"
+```
+
+3. Start the API server:
+```bash
+uvicorn api_server:app --host 0.0.0.0 --port 8000
 ```
 
 ### Start Frontend
@@ -118,10 +137,27 @@ npm run dev
 
 ### Running Together
 
-1. Start backend on port 8000.
-2. Start frontend on port 5173.
-3. In your browser, navigate to `http://localhost:5173`.
-4. Enter prompts, adjust settings, and generate images.
+1. **Terminal 1**: Start ComfyUI server on port 8188:
+   ```bash
+   python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header "*"
+   ```
+
+2. **Terminal 2**: Start backend API server on port 8000:
+   ```bash
+   # Activate venv: .\.venv\Scripts\activate (Windows) or source .venv/bin/activate (macOS/Linux)
+   # Windows: $env:PYTHONPATH = "$PWD\lib\ComfyUI"
+   # macOS/Linux: export PYTHONPATH="$PWD/lib/ComfyUI"
+   uvicorn api_server:app --host 0.0.0.0 --port 8000
+   ```
+
+3. **Terminal 3**: Start frontend on port 5173:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+4. In your browser, navigate to `http://localhost:5173`.
+5. Enter prompts, adjust settings, and generate images.
 
 ---
 
@@ -158,7 +194,7 @@ npm run dev
 
 ### GET /images
 
-* Returns a list of saved images in `backend/generated_images/`.
+* Returns a list of saved images in `generated_images/`.
 
 ### GET /health
 
@@ -178,44 +214,11 @@ All components live under `frontend/src/components/` and share state via React H
 
 ---
 
-## Docker (Local Testing)
-
-A `docker-compose.yml` is provided for spinning up both services locally:
-
-```yaml
-version: "3.8"
-services:
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      VITE_API_URL: "http://backend:8000"
-    depends_on:
-      - backend
-```
-
-Run:
-
-```bash
-docker-compose up --build
-```
-
-* Backend at `http://localhost:8000`
-* Frontend at `http://localhost:3000`
-
----
-
 ## Testing
 
 ### Backend Tests
 
 ```bash
-cd backend
 pip install pytest
 pytest
 ```
