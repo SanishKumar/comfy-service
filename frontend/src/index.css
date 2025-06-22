@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+.app {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  height: 100vh;
+}
+.sidebar {
+  border-right: 1px solid #ddd;
+  padding: 1rem;
+  overflow-y: auto;
+}
+.main {
+  padding: 1rem;
+  overflow-y: auto;
+}
+button {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  margin: 0.25rem;
+}
+input, textarea, select {
+  width: 100%;
+  margin: 0.25rem 0 1rem;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+.range-wrapper {
+  margin-bottom: 1rem;
+}
+.range-wrapper label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
