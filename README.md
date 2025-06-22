@@ -1,121 +1,163 @@
 # ComfyUI-as-a-Service
 
-A minimal, modular proof-of-concept API for LoRA-enabled image generation using ComfyUI.  
-This project provides the foundational inference and backend layer of my larger LoRA fine-tuning and serving pipeline.
+A proof‑of‑concept API and web client for LoRA‑enabled image generation using ComfyUI.
+This repo now includes:
+
+* **Backend**: FastAPI service wrapping ComfyUI workflows (.flow) for single‑image generation, with CORS enabled for local frontend integration.
+* **Frontend**: Vite + React + TypeScript + SWC app featuring prompt input, LoRA/model selection, parameter sliders, generation button with loader, result gallery, history & favorites persisted in localStorage, and settings panel.
 
 ---
 
 ## Table of Contents
 
-1. [Features](#features)  
-2. [Prerequisites](#prerequisites)  
-3. [Installation](#installation)  
-4. [Usage](#usage)  
-   - [Start the Server](#start-the-server)  
-   - [Example Request](#example-request)  
-5. [API Reference](#api-reference)  
-6. [Testing](#testing)  
-7. [Next Steps](#next-steps)  
-
----
+1. [Features](#features)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Usage](#usage)
+   * [Start Backend](#start-backend)
+   * [Start Frontend](#start-frontend)
+   * [Running Together](#running-together)
+5. [API Reference](#api-reference)
+6. [Frontend Reference](#frontend-reference)
+7. [Testing](#testing)
+8. [Next Steps](#next-steps)
 
 ## Features
 
-- 🔄 **ComfyUI Workflow**  
-  - Loads a Stable Diffusion checkpoint  
-  - Applies a chosen LoRA adapter  
-  - Outputs raw PNG bytes  
+* 🔄 **ComfyUI Workflow**
+  * Loads a Stable Diffusion checkpoint + optional LoRA adapter
+  * Runs in‑process without requiring a separate ComfyUI HTTP server
+  * Single‑image output as PNG bytes
 
-- 🐍 **Inference Module** (`comfy_generate.py`)  
-  - Function signature:  
-    ```python
-    generate_image(prompt: str, lora_path: Optional[str], seed: Optional[int]) -> bytes
-    ```  
-  - Accepts text prompt, optional LoRA path, and seed  
-  - Runs on CPU (or GPU if available)  
-  - Returns PNG image data  
+* 🚀 **REST API** (`api_server.py`)
+  * `POST /generate` accepts prompt, negative\_prompt, LoRA name, seed
+  * Returns Base64‑encoded PNG, metadata (size, seed, saved\_path)
+  * CORS enabled for `http://localhost:3000` and `http://localhost:5173`
 
-- 🚀 **REST API** (`api_server.py`)  
-  - FastAPI application exposing `POST /generate`  
-  - Validates JSON input  
-  - Returns Base64-encoded PNG + metadata  
-
-- 📄 **Documentation & Testing**  
-  - Step-by-step instructions in this README  
-  - Basic `pytest` suite for request validation  
+* 💻 **Frontend** (`frontend/`)
+  * Prompt form: text, negative prompt, LoRA selector, sliders for steps & CFG, seed input
+  * Generate button with loading spinner
+  * Result gallery: display image, Download / Regenerate / Save Favorite buttons
+  * **History** & **Favorites** stored in browser `localStorage`
+  * **Settings** panel: API URL, API key, default parameters (persisted)
 
 ---
 
 ## Prerequisites
 
-- **Python 3.8+**  
-- **pip** (package installer)  
-- *(Optional)* GPU with CUDA support  
-- Internet connection to install dependencies and download base models  
+* **Python** 3.8+ (backend)
+* **Node.js** 18+ & **npm** (frontend)
+* *(Optional)* GPU with CUDA for faster inference
+* Git, pip, and basic CLI tools
 
 ---
 
 ## Installation
 
-1. **Clone the repo**  
-   ```bash
-   git clone https://github.com/yourusername/comfyui-as-a-service.git
-   cd comfyui-as-a-service
-   ```
+### 1. Clone the Repo
 
-2. **Create & activate a virtual environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate   # Linux / macOS
-   venv\Scripts\activate      # Windows
-   ```
+```bash
+git clone https://github.com/yourusername/comfyui-as-a-service.git
+cd comfyui-as-a-service
+```
 
-3. **Install Python dependencies**
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+### 2. Setup Backend
 
-4. **Place your ComfyUI .flow file and LoRA adapters**
-   - Put `workflow.flow` (or your own .flow) in the project root
-   - Create a `models/` folder and add any `.safetensors` or adapter files
+```bash
+python3 -m venv .venv
+# Windows: .\.venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Put your `.flow` file at `flows/text2img_lora.flow` and any LoRA adapters under `lib/` if needed.
+
+### 3. Start ComfyUI Server
+
+First, start the ComfyUI server (required for backend functionality):
+
+```bash
+python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header "*"
+```
+
+Keep this terminal running throughout your session.
+
+### 4. Setup Frontend
+
+```bash
+cd frontend
+npm install
+```
+
+Add or adjust `.env` in `frontend/` as needed:
+
+```ini
+VITE_API_URL=http://localhost:8000
+VITE_DEFAULT_STEPS=20
+VITE_DEFAULT_CFG=7.5
+```
 
 ---
 
 ## Usage
 
-### Start the Server
+### Start Backend
 
+**In a new terminal:**
+
+1. Activate the virtual environment:
+```bash
+# Windows: .\.venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+```
+
+2. Set the Python path (Windows PowerShell):
+```powershell
+$env:PYTHONPATH = "$PWD\lib\ComfyUI"
+```
+
+For macOS/Linux (bash/zsh):
+```bash
+export PYTHONPATH="$PWD/lib/ComfyUI"
+```
+
+3. Start the API server:
 ```bash
 uvicorn api_server:app --host 0.0.0.0 --port 8000
 ```
 
-By default runs on CPU.
-
-To use GPU (if installed), ensure your environment has CUDA-enabled PyTorch, then the same command will pick up your GPU automatically.
-
-### Example Request
-
-Send a POST to `/generate` with JSON:
+### Start Frontend
 
 ```bash
-curl -X POST http://localhost:8000/generate \
-     -H "Content-Type: application/json" \
-     -d '{
-           "prompt": "A futuristic cityscape at sunset",
-           "lora_path": "models/my_adapter.safetensors",
-           "seed": 42
-         }'
+cd frontend
+npm run dev
 ```
 
-Response:
+* Frontend runs on `http://localhost:5173` by default.
+* Ensure `.env` `VITE_API_URL` matches your backend URL.
 
-```json
-{
-  "image": "<base64-encoded PNG>",
-  "seed": 42
-}
-```
+### Running Together
+
+1. **Terminal 1**: Start ComfyUI server on port 8188:
+   ```bash
+   python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header "*"
+   ```
+
+2. **Terminal 2**: Start backend API server on port 8000:
+   ```bash
+   # Activate venv: .\.venv\Scripts\activate (Windows) or source .venv/bin/activate (macOS/Linux)
+   # Windows: $env:PYTHONPATH = "$PWD\lib\ComfyUI"
+   # macOS/Linux: export PYTHONPATH="$PWD/lib/ComfyUI"
+   uvicorn api_server:app --host 0.0.0.0 --port 8000
+   ```
+
+3. **Terminal 3**: Start frontend on port 5173:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+4. In your browser, navigate to `http://localhost:5173`.
+5. Enter prompts, adjust settings, and generate images.
 
 ---
 
@@ -123,44 +165,79 @@ Response:
 
 ### POST /generate
 
-**Request JSON fields**
+* **URL**: `/generate`
+* **Method**: `POST`
+* **Request JSON**:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| prompt | str | Yes | Text prompt for image generation. |
-| lora_path | str | No | Path to a LoRA adapter file (relative path). |
-| seed | int | No | Random seed for reproducibility. |
+  ```json
+  {
+    "prompt": "A serene lake at sunrise",
+    "negative_prompt": "blurry",
+    "lora_name": "coolstyle.safetensors",
+    "seed": 12345,
+    "save_image": true
+  }
+  ```
+* **Response JSON**:
 
-**Response JSON fields**
+  ```json
+  {
+    "image": "<base64 PNG>",
+    "format": "png",
+    "size_bytes": 34567,
+    "saved_path": "generated_images/20250622_prompt_seed12345.png",
+    "prompt": "A serene lake at sunrise",
+    "seed": 12345,
+    "lora_name": "coolstyle.safetensors"
+  }
+  ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| image | str | Base64-encoded PNG image data. |
-| seed | int | The seed used for generation. |
+### GET /images
+
+* Returns a list of saved images in `generated_images/`.
+
+### GET /health
+
+* Health check: `{ "status": "healthy", "timestamp": "…" }`
+
+---
+
+## Frontend Reference
+
+* **PromptForm**: collects prompt, negative prompt, LoRA model, steps, CFG, seed.
+* **GenerateButton**: triggers API call and shows loading spinner.
+* **ResultGallery**: displays generated image and actions (Download, Regenerate, Save Favorite).
+* **HistoryList** & **FavoritesList**: show past results and saved favorites; data persisted in `localStorage`.
+* **SettingsPanel**: edit and persist `VITE_API_URL`, API key (if used), default steps/CFG.
+
+All components live under `frontend/src/components/` and share state via React Hooks (see `useImageGenerator` hook in `frontend/src/hooks/useImageGenerator.ts`).
 
 ---
 
 ## Testing
 
-1. **Install test requirements**
-   ```bash
-   pip install pytest
-   ```
+### Backend Tests
 
-2. **Run tests**
-   ```bash
-   pytest
-   ```
+```bash
+pip install pytest
+pytest
+```
 
-Tests cover:
-- Valid `/generate` requests returning 200 + image.
-- Invalid payloads returning 4xx errors.
+### Frontend Tests
+
+(Add your React testing framework, e.g. Vitest or Jest)
+
+```bash
+cd frontend
+npm run test
+```
 
 ---
 
 ## Next Steps
 
-- Integrate this API into your larger LoRA fine-tuning pipeline.
-- Add support for multiple workflows and batch inference.
-- Build a simple web frontend to visualize results.
-- Implement authentication and rate limiting.
+* 🔒 Add authentication (API keys, JWT) to `/generate`.
+* 🔄 Support multiple `.flow` workflows and batch generation.
+* 🏗️ Integrate more ComfyUI nodes (inpainting, ControlNet).
+* ☁️ Deploy backend to a GPU‑enabled VM or container service.
+* 📈 Monitor performance and scale with GPU clusters.
