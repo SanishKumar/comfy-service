@@ -6,13 +6,14 @@ import type { ImageResult } from './types/ImageResult'
 import HistoryList from './components/HistoryList'
 import FavoritesList from './components/FavoritesList'
 import SettingsPanel from './components/SettingsPanel'
-// If you need the Settings type, import it from its actual location or define it here:
+
 export type Settings = {
   apiUrl: string
   apiKey: string
   defaultSteps: number
   defaultCfg: number
 }
+
 import { generateImage, type GenerateRequest, type GenerateResponse } from './services/api'
 
 const DEFAULT_SETTINGS: Settings = {
@@ -95,7 +96,27 @@ const App: React.FC = () => {
       setResults((prev) => [newResult, ...prev])
       setHistory((prev) => [newResult, ...prev])
     } catch (err: any) {
-      alert(`Generation error: ${err.message}`)
+      // Create a more elegant error notification
+      const errorDiv = document.createElement('div')
+      errorDiv.className = 'error-notification'
+      errorDiv.textContent = `Generation error: ${err.message}`
+      errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+      `
+      document.body.appendChild(errorDiv)
+      setTimeout(() => {
+        errorDiv.style.animation = 'slideOut 0.3s ease forwards'
+        setTimeout(() => document.body.removeChild(errorDiv), 300)
+      }, 3000)
     } finally {
       setLoading(false)
     }
@@ -108,7 +129,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `image-${res.id}.png`
+    a.download = `ai-art-${res.id}.png`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -125,7 +146,31 @@ const App: React.FC = () => {
   }
 
   const handleSaveFavorite = (res: ImageResult) => {
-    setFavorites((prev) => [res, ...prev])
+    // Check if already in favorites
+    if (!favorites.find(fav => fav.id === res.id)) {
+      setFavorites((prev) => [res, ...prev])
+      
+      // Show success notification
+      const successDiv = document.createElement('div')
+      successDiv.textContent = 'Added to favorites!'
+      successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #22c55e;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+      `
+      document.body.appendChild(successDiv)
+      setTimeout(() => {
+        successDiv.style.animation = 'slideOut 0.3s ease forwards'
+        setTimeout(() => document.body.removeChild(successDiv), 300)
+      }, 2000)
+    }
   }
 
   const handleSelectHistory = (res: ImageResult) => {
@@ -144,34 +189,94 @@ const App: React.FC = () => {
     <div className="app">
       {/* Sidebar */}
       <aside className="sidebar">
-        <SettingsPanel settings={settings} onChange={setSettings} />
-        <HistoryList items={history} onSelect={handleSelectHistory} />
-        <FavoritesList items={favorites} onSelect={handleSelectFavorite} />
+        <div className="fade-in">
+          <SettingsPanel settings={settings} onChange={setSettings} />
+          <HistoryList items={history} onSelect={handleSelectHistory} />
+          <FavoritesList items={favorites} onSelect={handleSelectFavorite} />
+        </div>
       </aside>
 
       {/* Main content */}
       <main className="main">
-        <PromptForm
-          defaultValues={{
-            prompt: '',
-            negativePrompt: '',
-            loraModel: '',
-            steps: settings.defaultSteps,
-            cfg: settings.defaultCfg,
-            seed: Math.floor(Math.random() * 1_000_000),
-          }}
-          onSubmit={handleGenerate}
-        />
+        <div className="slide-up">
+          <div style={{ marginBottom: '2rem' }}>
+            <h1 style={{ 
+              fontSize: '2.5rem', 
+              fontWeight: '700', 
+              marginBottom: '0.5rem',
+              background: 'linear-gradient(135deg, #6366f1 0%, #f59e0b 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              AI Art Generator
+            </h1>
+            <p style={{ 
+              color: 'var(--text-secondary)', 
+              fontSize: '1.125rem',
+              marginBottom: '2rem' 
+            }}>
+              Create stunning images with artificial intelligence
+            </p>
+          </div>
 
-        <ResultGallery
-          results={results}
-          onDownload={handleDownload}
-          onRegenerate={handleRegenerate}
-          onSaveFavorite={handleSaveFavorite}
-        />
+          <PromptForm
+            defaultValues={{
+              prompt: '',
+              negativePrompt: '',
+              loraModel: '',
+              steps: settings.defaultSteps,
+              cfg: settings.defaultCfg,
+              seed: Math.floor(Math.random() * 1_000_000),
+            }}
+            onSubmit={handleGenerate}
+            loading={loading}
+          />
 
-        {loading && <div style={{ marginTop: '1rem' }}>Generating image…</div>}
+          <ResultGallery
+            results={results}
+            onDownload={handleDownload}
+            onRegenerate={handleRegenerate}
+            onSaveFavorite={handleSaveFavorite}
+            loading={loading}
+          />
+
+          {loading && (
+            <div className="loading" style={{ 
+              marginTop: '2rem', 
+              padding: '2rem',
+              textAlign: 'center' as const,
+              fontSize: '1.125rem'
+            }}>
+              Creating your masterpiece...
+            </div>
+          )}
+        </div>
       </main>
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes slideOut {
+          from {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </div>
   )
 }
