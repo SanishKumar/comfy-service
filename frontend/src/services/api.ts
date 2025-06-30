@@ -1,4 +1,3 @@
-// src/services/api.ts
 export interface GenerateRequest {
   prompt: string;
   negative_prompt: string;

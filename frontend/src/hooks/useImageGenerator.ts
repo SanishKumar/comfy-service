@@ -1,4 +1,3 @@
-// src/hooks/useImageGenerator.ts
 import { useState } from 'react';
 import { type GenerateRequest, type GenerateResponse, generateImage } from '../services/api';
 

@@ -15,7 +15,7 @@ def get_basic_workflow():
     return {
         "1": {
             "inputs": {
-                "ckpt_name": "dreamshaper_8.safetensors"  # Using available model
+                "ckpt_name": "dreamshaper_8.safetensors"  # Loading models 
             },
             "class_type": "CheckpointLoaderSimple",
             "_meta": {
@@ -24,7 +24,7 @@ def get_basic_workflow():
         },
         "2": {
             "inputs": {
-                "text": "beautiful scenery"  # This will be replaced with actual prompt
+                "text": "beautiful scenery"  # Positive Prompt
             },
             "class_type": "CLIPTextEncode",
             "_meta": {
@@ -33,7 +33,7 @@ def get_basic_workflow():
         },
         "3": {
             "inputs": {
-                "text": ""  # This will be replaced with negative prompt
+                "text": ""  # Negative Prompt
             },
             "class_type": "CLIPTextEncode",
             "_meta": {
@@ -107,7 +107,7 @@ def get_lora_workflow():
         },
         "2": {
             "inputs": {
-                "lora_name": "example_lora.safetensors",  # Will be replaced
+                "lora_name": "example_lora.safetensors",  # Will be replaced by actual LoRA name
                 "strength_model": 1.0,
                 "strength_clip": 1.0,
                 "model": ["1", 0],

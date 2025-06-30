@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useEffect } from 'react'
 import PromptForm, { type PromptData } from './components/PromptForm'
 import ResultGallery from './components/ResultGallery'
